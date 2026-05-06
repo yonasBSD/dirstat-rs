@@ -55,7 +55,7 @@ Fast, cross-platform disk usage CLI
  
         $ ds -d 3
 
-### Show apparent size on disk
+### Show apparent file size
 
         $ ds -a PATH
 

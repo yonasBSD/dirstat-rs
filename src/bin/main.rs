@@ -186,9 +186,9 @@ struct Config {
     target_dir: Option<PathBuf>,
 
     #[structopt(short = "a")]
-    /// Apparent size on disk.
+    /// Show apparent file size.
     ///
-    /// This would actually retrieve allocation size of files (AKA physical size on disk)
+    /// This reports logical file length instead of allocated size on disk.
     apparent: bool,
 
     #[structopt(short = "j")]

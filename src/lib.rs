@@ -79,9 +79,9 @@ impl FileInfo {
             })
         } else {
             let size = if apparent {
-                md.blocks() * 512
-            } else {
                 md.len()
+            } else {
+                md.blocks() * 512
             };
             Ok(FileInfo::File {
                 size,
@@ -104,14 +104,52 @@ impl FileInfo {
             })
         } else {
             let size = if apparent {
-                ffi::compressed_size(path)?
-            } else {
                 md.file_size()
+            } else {
+                ffi::compressed_size(path)?
             };
             Ok(FileInfo::File {
                 size,
                 volume_id: md.volume_serial_number(),
             })
         }
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::FileInfo;
+    use std::error::Error;
+    use std::fs::{self, File};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn apparent_size_uses_logical_file_length() -> Result<(), Box<dyn Error>> {
+        let dir = std::env::temp_dir().join(format!(
+            "dirstat-rs-{}",
+            SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()
+        ));
+        fs::create_dir(&dir)?;
+        let path = dir.join("sparse.bin");
+        let file = File::create(&path)?;
+        let sparse_len = 1024 * 1024;
+        file.set_len(sparse_len)?;
+        drop(file);
+
+        let apparent_size = match FileInfo::from_path(&path, true)? {
+            FileInfo::File { size, .. } => size,
+            FileInfo::Directory { .. } => panic!("test path should be a file"),
+        };
+        let disk_size = match FileInfo::from_path(&path, false)? {
+            FileInfo::File { size, .. } => size,
+            FileInfo::Directory { .. } => panic!("test path should be a file"),
+        };
+
+        fs::remove_file(&path)?;
+        fs::remove_dir(&dir)?;
+
+        assert_eq!(apparent_size, sparse_len);
+        assert!(disk_size <= apparent_size);
+        Ok(())
     }
 }
